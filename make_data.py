@@ -29,7 +29,8 @@ class Preprocess:
         self.encoded_sequences = self.encode()
         self.encoded_shuffled_sequences = self.shuffle_sequences()
 
-    def make_amino_dict(self):
+    @staticmethod
+    def make_amino_dict():
         amino_list = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W',
                       'Y', '0']
         one_hots = np.eye(21, 21)

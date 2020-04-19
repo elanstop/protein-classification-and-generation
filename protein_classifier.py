@@ -9,9 +9,10 @@ from sklearn.model_selection import train_test_split
 
 
 class ProteinClassifier:
+
     def __init__(self, natural_input='new_training_natural_proteins.txt',
-                 random_input='new_training_random_proteins.txt', num_data=15000, test_fraction=0.2, batch_size=100,
-                 epochs=20):
+                 random_input='new_training_random_proteins.txt', num_data=30000, test_fraction=0.2, batch_size=32,
+                 epochs=100):
         self.natural_input = natural_input
         self.random_input = random_input
         self.num_data = num_data
@@ -26,14 +27,10 @@ class ProteinClassifier:
     def load_data(self):
         file = open(self.natural_input, 'rb')
         natural_proteins = pickle.load(file)
-        print(len(natural_proteins))
-        print(type(natural_proteins))
         file.close()
 
         file2 = open(self.random_input, 'rb')
         random_proteins = pickle.load(file2)
-        print(len(random_proteins))
-        print(type(random_proteins))
         file2.close()
 
         return natural_proteins, random_proteins
@@ -52,11 +49,10 @@ class ProteinClassifier:
     def model():
         model = Sequential()
         model.add(Masking(mask_value=0, input_shape=(200, 21)))
-        model.add(LSTM(20, return_sequences=True))
-        model.add(LSTM(20, return_sequences=True))
+        model.add(LSTM(100, return_sequences=True))
         model.add(LSTM(20))
         model.add(Dense(1, activation='sigmoid'))
-        model.compile(optimizer=Adam(), loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
         return model
 
     def train(self):
