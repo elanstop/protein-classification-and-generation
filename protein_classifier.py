@@ -1,58 +1,71 @@
 import numpy as np
 import pickle
-import tensorflow as tf
-from tensorflow.python.keras import Sequential
-from tensorflow.python.keras.layers import Dense, LSTM
-from tensorflow.python.keras.optimizers import Adam
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Masking
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
-from tensorflow.python.keras.layers import backend as K
-
-file = open('100_to_200_natural.txt','rb')
-natural_proteins = pickle.load(file)
-file.close()
-
-#random data created by shuffling real protein sequences, so that the amino acid distribution is left fixed (see make_data.py)
-#there are two random proteins for each of the natural proteins
-file2 = open('100_to_200_random.txt','rb')
-random_proteins = pickle.load(file2)
-file2.close()
-
-#we truncate the list of random proteins to have the same length as the natural proteins
-all_data = list(natural_proteins)+list(random_proteins)[:len(natural_proteins)]
-
-#we previously labeled the data
-#pre-labeling can be dropped in a future version
-X = np.array([entry[0] for entry in all_data])
-Y = np.array([entry[1] for entry in all_data])
-
-x_train, x_val, y_train, y_val = train_test_split(X,Y,test_size = 0.2)
-
-#might be used in the future to benefit from being able to make arbitrary amounts of fake data
-def focal_loss(gamma=2., alpha=.25):
-	def focal_loss_fixed(y_true, y_pred):
-		pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
-		pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
-		return -K.mean(alpha * K.pow(1. - pt_1, gamma) * K.log(pt_1)) - K.mean((1 - alpha) * K.pow(pt_0, gamma) * K.log(1. - pt_0))
-	return focal_loss_fixed
 
 
-model = Sequential()
-model.add(LSTM(21,input_shape=(200,21)))
-model.add(Dense(2, activation='sigmoid'))
+class ProteinClassifier:
+    def __init__(self, natural_input='new_training_natural_proteins.txt',
+                 random_input='new_training_random_proteins.txt', num_data=15000, test_fraction=0.2, batch_size=100,
+                 epochs=20):
+        self.natural_input = natural_input
+        self.random_input = random_input
+        self.num_data = num_data
+        self.test_fraction = test_fraction
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.natural_proteins, self.random_proteins = self.load_data()
+        self.x_train, self.x_test, self.y_train, self.y_test = self.split()
+        self.model = self.model()
+        self.train = self.train()
+
+    def load_data(self):
+        file = open(self.natural_input, 'rb')
+        natural_proteins = pickle.load(file)
+        print(len(natural_proteins))
+        print(type(natural_proteins))
+        file.close()
+
+        file2 = open(self.random_input, 'rb')
+        random_proteins = pickle.load(file2)
+        print(len(random_proteins))
+        print(type(random_proteins))
+        file2.close()
+
+        return natural_proteins, random_proteins
+
+    def split(self):
+        size = int(self.num_data / 2)
+        x = np.array(self.natural_proteins[:size] + self.random_proteins[:size])
+        print(len(x))
+        y = np.array([1] * size + [0] * size)
+        print(len(y))
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=self.test_fraction)
+
+        return pad_sequences(x_train, padding='post', value=0.0), pad_sequences(x_test, padding='post'), y_train, y_test
+
+    @staticmethod
+    def model():
+        model = Sequential()
+        model.add(Masking(mask_value=0, input_shape=(200, 21)))
+        model.add(LSTM(20, return_sequences=True))
+        model.add(LSTM(20, return_sequences=True))
+        model.add(LSTM(20))
+        model.add(Dense(1, activation='sigmoid'))
+        model.compile(optimizer=Adam(), loss='binary_crossentropy', metrics=['accuracy'])
+        return model
+
+    def train(self):
+        model_checkpoint = ModelCheckpoint('new_model.{epoch:02d}-{val_acc:.2f}.hdf5')
+        model = self.model
+        x_train, y_train = self.x_train, self.y_train
+        x_test, y_test = self.x_test, self.y_test
+        model.fit(x_train, y_train, batch_size=self.batch_size, epochs=self.epochs, validation_data=(x_test, y_test),
+                  callbacks=[model_checkpoint])
 
 
-#uncomment line below to begin training on a particularly strong, pre-trained model
-#model.load_weights('best_classifier_yet_weights.h5')
-
-model.compile(optimizer=Adam(),
-              loss='binary_crossentropy',
-              metrics=['accuracy'])
-
-
-model.fit(x_train, y_train, epochs=5, batch_size=100,
-          validation_data=(x_val,y_val))
-
-model.save('protein_classifier.h5')
-
-
-
+ProteinClassifier()
