@@ -13,17 +13,19 @@ from random import shuffle, seed
 # 100_to_200_random.txt
 
 # 100_to_200_transcript_level.fasta was created with the same search terms, only using evidence at transcript level
-# rather than protein level. of the 8865 proteins in this file, only 1023 are found in 100_to_200.fasta as well. we
-# can therefore use this file for testing
+# rather than protein level. Most of the sequences are not found in the other file, but a small number of duplicates
+# are dropped to create the testing set
+
 
 class Preprocess:
     def __init__(self, data_type, natural_output_file, random_output_file, raw_train_data='100_to_200.fasta',
-                 raw_test_data="100_to_200_transcript_level.fasta"):
+                 raw_test_data="100_to_200_transcript_level.fasta", reference_list=None):
         self.data_type = data_type
         self.natural_output_file = natural_output_file
         self.random_output_file = random_output_file
         self.raw_train_data = raw_train_data
         self.raw_test_data = raw_test_data
+        self.reference_list = reference_list
         self.code_dict = self.make_amino_dict()
         self.input_sequences = self.extract_sequences()
         self.encoded_sequences = self.encode()
@@ -50,6 +52,9 @@ class Preprocess:
             if any([(c in bad_letters) for c in str(record.seq)]):
                 continue
             sequence_list.append(list(str(record.seq)))
+        # drop sequences that are part of the training set when building testing set
+        if self.data_type == 'testing':
+            sequence_list = [s for s in sequence_list if s not in self.reference_list]
         return sequence_list
 
     def encode(self):
@@ -84,5 +89,6 @@ class Preprocess:
 training_data = Preprocess('training', 'new_training_natural_proteins.txt', 'new_training_random_proteins.txt')
 training_data.save()
 
-testing_data = Preprocess('testing', 'new_testing_natural_proteins.txt', 'new_testing_random_proteins.txt')
+testing_data = Preprocess('testing', 'new_testing_natural_proteins.txt', 'new_testing_random_proteins.txt',
+                          reference_list=training_data.input_sequences)
 testing_data.save()

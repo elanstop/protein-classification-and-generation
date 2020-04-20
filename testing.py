@@ -4,8 +4,6 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 # accuracy on this test set is 98%
-# however, 1023 of the 8795 proteins in this set might have also been present during training
-# so true accuracy likely slightly lower
 
 file1 = open('new_testing_natural_proteins.txt', 'rb')
 natural_proteins = pickle.load(file1)
@@ -14,6 +12,8 @@ file1.close()
 file2 = open('new_testing_random_proteins.txt', 'rb')
 random_proteins = pickle.load(file2)
 file2.close()
+
+print('number of natural proteins in test set:', len(natural_proteins))
 
 data = np.array(natural_proteins+random_proteins)
 data = pad_sequences(data, padding='post', value=0.0)
