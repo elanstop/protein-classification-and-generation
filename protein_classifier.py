@@ -49,7 +49,7 @@ class ProteinClassifier:
     def model():
         model = Sequential()
         model.add(Masking(mask_value=0, input_shape=(200, 21)))
-        model.add(LSTM(100, return_sequences=True))
+        model.add(LSTM(20, return_sequences=True))
         model.add(LSTM(20))
         model.add(Dense(1, activation='sigmoid'))
         model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])

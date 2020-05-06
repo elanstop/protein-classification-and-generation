@@ -19,5 +19,5 @@ data = np.array(natural_proteins+random_proteins)
 data = pad_sequences(data, padding='post', value=0.0)
 labels = np.array([1] * len(natural_proteins) + [0] * len(random_proteins))
 
-model = tf.keras.models.load_model('new_model.100-0.97.hdf5')
+model = tf.keras.models.load_model('current_best_classifier.hdf5')
 model.evaluate(data, labels)
