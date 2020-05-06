@@ -1,15 +1,15 @@
-import tensorflow as tf
 import numpy as np
-from tensorflow.python.keras import Sequential
-from tensorflow.python.keras.layers import Dense, Reshape, Lambda, LSTM, BatchNormalization
-from tensorflow.python.keras.optimizers import Adam
 import pickle
+from random import sample
+import tensorflow as tf
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, Reshape, Lambda, LSTM, BatchNormalization, Masking
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-file = open('100_to_200_natural.txt', 'rb')
-data = pickle.load(file)
-sequence_data = [x[0] for x in data]
+file = open('new_training_natural_proteins.txt', 'rb')
+sequence_data = pad_sequences(pickle.load(file), padding='post', value=0.0)
 print(len(sequence_data))
-sequence_labels = [x[1] for x in data]
 file.close()
 
 
@@ -34,11 +34,12 @@ class GAN:
 	@staticmethod
 	def discriminator():
 		D = Sequential()
-		D.add(LSTM(21, input_shape=(200, 21)))
-		D.add(Dense(2, activation='sigmoid'))
-		# load weights from the best discriminator we've yet found
-		D.load_weights('best_classifier_yet_weights.h5')
-		D.compile(loss='binary_crossentropy', optimizer=Adam())
+		D.add(Masking(mask_value=0, input_shape=(200, 21)))
+		D.add(LSTM(100, return_sequences=True))
+		D.add(LSTM(20))
+		D.add(Dense(1, activation='sigmoid'))
+		D.load_weights('new_model.100-0.97.hdf5')
+		D.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
 		return D
 
 	@staticmethod
@@ -64,8 +65,8 @@ class GAN:
 
 	def train(self, iterations, batch_size, handicap):
 		plot_data = []
-		positive_labels = np.array([np.array([0, 1]) for _ in range(batch_size)])
-		negative_labels = np.array([np.array([1, 0]) for _ in range(batch_size)])
+		positive_labels = np.array([1]*batch_size)
+		negative_labels = np.array([0]*batch_size)
 		for cnt in range(iterations):
 
 			noise = np.random.normal(0, 1, (batch_size, 100))
@@ -77,8 +78,10 @@ class GAN:
 				synthetic_proteins = self.G.predict(gen_noise)
 				# we pull out a random slice of the natural proteins for training, but do not shuffle
 				# this can be improved in the future
-				random_index = np.random.randint(0, len(sequence_data) - batch_size // 2)
-				natural_proteins = sequence_data[random_index:random_index + batch_size // 2]
+				# random_index = np.random.randint(0, len(sequence_data) - batch_size // 2)
+				# natural_proteins = sequence_data[random_index:random_index + batch_size // 2]
+				# shuffle(sequence_data)
+				natural_proteins = sample(list(sequence_data), batch_size // 2)
 				x_combined_batch = np.concatenate((natural_proteins, synthetic_proteins))
 				y_combined_batch = np.concatenate(
 					(positive_labels[0:batch_size // 2], negative_labels[0:batch_size // 2]))
