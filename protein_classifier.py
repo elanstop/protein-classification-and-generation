@@ -48,7 +48,7 @@ class ProteinClassifier:
     @staticmethod
     def model():
         model = Sequential()
-        model.add(Masking(mask_value=0, input_shape=(200, 21)))
+        model.add(Masking(mask_value=0, input_shape=(200, 20)))
         model.add(LSTM(20, return_sequences=True))
         model.add(LSTM(20))
         model.add(Dense(1, activation='sigmoid'))
@@ -56,7 +56,7 @@ class ProteinClassifier:
         return model
 
     def train(self):
-        model_checkpoint = ModelCheckpoint('new_model.{epoch:02d}-{val_acc:.2f}.hdf5')
+        model_checkpoint = ModelCheckpoint('0506_model.{epoch:02d}-{val_acc:.2f}.hdf5')
         model = self.model
         x_train, y_train = self.x_train, self.y_train
         x_test, y_test = self.x_test, self.y_test
