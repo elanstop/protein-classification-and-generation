@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-from random import sample
+from random import sample, randint
 import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Reshape, Lambda, LSTM, BatchNormalization, Masking
@@ -19,31 +19,41 @@ file.close()
 # having a largest entry at the same index will get mapped to the same one-hot vector, this layer might impede the
 # gradient, and it will be useful to consider improvements in the future
 
-
-def one_hot_output(x, temp=0.001):
-	return tf.nn.softmax(x / temp)
-
-
 class GAN:
 
-	def __init__(self):
+	def __init__(self, temp=0.001, iterations=1000, batch_size=32, handicap=1, load_weights=False):
+		self.temp = temp
+		self.iterations = iterations
+		self.batch_size = batch_size
+		self.handicap = handicap
+		self.load_weights = load_weights
 		self.G = self.generator()
 		self.D = self.discriminator()
 		self.stacked_G_D = self.stacked_G_D()
 
-	@staticmethod
-	def discriminator():
+	def one_hot_output(self, x):
+		return tf.nn.softmax(x / self.temp)
+
+	def random_truncate(self, set):
+		truncated_list = [set[0]]
+		for i in range(1,len(set)):
+			length = randint(100,200)
+			truncated_list.append(set[i][:length])
+		return pad_sequences(truncated_list, padding='post', value=0.0)
+
+
+	def discriminator(self):
 		D = Sequential()
 		D.add(Masking(mask_value=0, input_shape=(200, 21)))
-		D.add(LSTM(100, return_sequences=True))
+		D.add(LSTM(20, return_sequences=True))
 		D.add(LSTM(20))
 		D.add(Dense(1, activation='sigmoid'))
-		D.load_weights('new_model.100-0.97.hdf5')
+		if self.load_weights:
+			D.load_weights('current_best_classifier.hdf5')
 		D.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
 		return D
 
-	@staticmethod
-	def generator():
+	def generator(self):
 		G = Sequential()
 		G.add(Dense(100, input_shape=(100,), activation='relu', name='dense_1'))
 		G.add(BatchNormalization())
@@ -51,8 +61,8 @@ class GAN:
 		G.add(BatchNormalization())
 		G.add(Dense(4200, activation='relu', name='dense_3'))
 		G.add(Reshape((200, 21), name='reshape'))
-		G.add(Lambda(one_hot_output, trainable=False, name='lambda'))
-		G.compile(loss='binary_crossentropy', optimizer=Adam())
+		G.add(Lambda(self.one_hot_output, trainable=False, name='lambda'))
+		G.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
 		return G
 
 	def stacked_G_D(self):
@@ -60,10 +70,13 @@ class GAN:
 		model = Sequential()
 		model.add(self.G)
 		model.add(self.D)
-		model.compile(loss='binary_crossentropy', optimizer=Adam())
+		model.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
 		return model
 
-	def train(self, iterations, batch_size, handicap):
+	def train(self):
+		iterations = self.iterations
+		batch_size = self.batch_size
+		handicap = self.handicap
 		plot_data = []
 		positive_labels = np.array([1]*batch_size)
 		negative_labels = np.array([0]*batch_size)
@@ -75,12 +88,7 @@ class GAN:
 			# we don't update the discriminator as often because it is pre-trained and otherwise dominates the generator
 			if cnt % handicap == 0:
 				gen_noise = np.random.normal(0, 1, (batch_size // 2, 100))
-				synthetic_proteins = self.G.predict(gen_noise)
-				# we pull out a random slice of the natural proteins for training, but do not shuffle
-				# this can be improved in the future
-				# random_index = np.random.randint(0, len(sequence_data) - batch_size // 2)
-				# natural_proteins = sequence_data[random_index:random_index + batch_size // 2]
-				# shuffle(sequence_data)
+				synthetic_proteins = self.random_truncate(self.G.predict(gen_noise))
 				natural_proteins = sample(list(sequence_data), batch_size // 2)
 				x_combined_batch = np.concatenate((natural_proteins, synthetic_proteins))
 				y_combined_batch = np.concatenate(
@@ -97,8 +105,7 @@ class GAN:
 
 
 gan = GAN()
-
-output_data = gan.train(200, 100, 20)
+output_data = gan.train()
 
 file = open('gan_plot_data.txt', 'wb')
 pickle.dump(output_data, file)

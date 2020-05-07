@@ -34,10 +34,11 @@ class Preprocess:
     @staticmethod
     def make_amino_dict():
         amino_list = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W',
-                      'Y', '0']
-        one_hots = np.eye(21, 21)
+                      'Y']
+        one_hots = np.eye(20, 20)
         code_list = [one_hots[i] for i in range(20)]
         code_dict = dict(zip(amino_list, code_list))
+        print(code_dict)
         return code_dict
 
     def extract_sequences(self):
