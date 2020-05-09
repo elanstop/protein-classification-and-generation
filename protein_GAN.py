@@ -55,12 +55,6 @@ class GAN:
 
 	def generator(self):
 		G = Sequential()
-		# G.add(Dense(100, input_shape=(200,), activation='relu', name='dense_1'))
-		# G.add(BatchNormalization())
-		# G.add(Dense(100, activation='relu', name='dense_2'))
-		# G.add(BatchNormalization())
-		# G.add(Dense(4000, activation='relu', name='dense_3'))
-		# G.add(Reshape((200, 20), name='reshape'))
 		G.add(Reshape((200, 20)))
 		G.add(LSTM(20, return_sequences=True))
 		G.add(Lambda(self.one_hot_output, trainable=False, name='lambda'))
