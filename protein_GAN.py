@@ -3,7 +3,7 @@ import pickle
 from random import sample, randint
 import tensorflow as tf
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Reshape, Lambda, LSTM, BatchNormalization, Masking
+from tensorflow.keras.layers import Dense, Reshape, Lambda, LSTM, Masking
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
@@ -34,13 +34,13 @@ class GAN:
 	def one_hot_output(self, x):
 		return tf.nn.softmax(x / self.temp)
 
-	def random_truncate(self, set):
+	@staticmethod
+	def random_truncate(set):
 		truncated_list = [set[0]]
 		for i in range(1, len(set)):
 			length = randint(100, 200)
 			truncated_list.append(set[i][:length])
 		return pad_sequences(truncated_list, padding='post', value=0.0)
-
 
 	def discriminator(self):
 		D = Sequential()
