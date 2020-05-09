@@ -21,7 +21,7 @@ file.close()
 
 class GAN:
 
-	def __init__(self, temp=0.001, iterations=1000, batch_size=32, handicap=1, load_weights=False):
+	def __init__(self, temp=0.001, iterations=2000, batch_size=32, handicap=20, load_weights=True):
 		self.temp = temp
 		self.iterations = iterations
 		self.batch_size = batch_size
@@ -36,15 +36,15 @@ class GAN:
 
 	def random_truncate(self, set):
 		truncated_list = [set[0]]
-		for i in range(1,len(set)):
-			length = randint(100,200)
+		for i in range(1, len(set)):
+			length = randint(100, 200)
 			truncated_list.append(set[i][:length])
 		return pad_sequences(truncated_list, padding='post', value=0.0)
 
 
 	def discriminator(self):
 		D = Sequential()
-		D.add(Masking(mask_value=0, input_shape=(200, 21)))
+		D.add(Masking(mask_value=0, input_shape=(200, 20)))
 		D.add(LSTM(20, return_sequences=True))
 		D.add(LSTM(20))
 		D.add(Dense(1, activation='sigmoid'))
@@ -55,12 +55,14 @@ class GAN:
 
 	def generator(self):
 		G = Sequential()
-		G.add(Dense(100, input_shape=(100,), activation='relu', name='dense_1'))
-		G.add(BatchNormalization())
-		G.add(Dense(100, activation='relu', name='dense_2'))
-		G.add(BatchNormalization())
-		G.add(Dense(4200, activation='relu', name='dense_3'))
-		G.add(Reshape((200, 21), name='reshape'))
+		# G.add(Dense(100, input_shape=(200,), activation='relu', name='dense_1'))
+		# G.add(BatchNormalization())
+		# G.add(Dense(100, activation='relu', name='dense_2'))
+		# G.add(BatchNormalization())
+		# G.add(Dense(4000, activation='relu', name='dense_3'))
+		# G.add(Reshape((200, 20), name='reshape'))
+		G.add(Reshape((200, 20)))
+		G.add(LSTM(20, return_sequences=True))
 		G.add(Lambda(self.one_hot_output, trainable=False, name='lambda'))
 		G.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
 		return G
@@ -82,12 +84,12 @@ class GAN:
 		negative_labels = np.array([0]*batch_size)
 		for cnt in range(iterations):
 
-			noise = np.random.normal(0, 1, (batch_size, 100))
+			noise = np.random.normal(0, 1, (batch_size, 4000))
 			g_loss = self.stacked_G_D.train_on_batch(noise, positive_labels)
 
 			# we don't update the discriminator as often because it is pre-trained and otherwise dominates the generator
 			if cnt % handicap == 0:
-				gen_noise = np.random.normal(0, 1, (batch_size // 2, 100))
+				gen_noise = np.random.normal(0, 1, (batch_size // 2, 4000))
 				synthetic_proteins = self.random_truncate(self.G.predict(gen_noise))
 				natural_proteins = sample(list(sequence_data), batch_size // 2)
 				x_combined_batch = np.concatenate((natural_proteins, synthetic_proteins))
