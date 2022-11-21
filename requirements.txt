@@ -1,4 +1,4 @@
-tensorflow==2.0.1
+tensorflow==2.9.3
 numpy==1.17.5
 python==3.7.6
 biopython==1.76
